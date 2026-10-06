@@ -341,11 +341,24 @@ jobs:
           fi
 
           SEMVERSION=${PACKAGEVERSION:1}  # strip off the leading 'v'
+
+          # The Dockerfiles download the package through the Azure Artifacts packaging API,
+          # so convert the NuGet v3 index URL (.../_packaging/<feed>/nuget/v3/index.json)
+          # into that API's feed base URL (.../_apis/packaging/feeds/<feed>).
+          FEEDURL="${{ env.ARTIFACTS_FEED_URL }}"
+          PACKAGESFEEDURL=$(echo "$FEEDURL" | sed -E 's#/_packaging/([^/]+)/nuget/v3/index\.json$#/_apis/packaging/feeds/\1#')
+          if [[ -z "$FEEDURL" || "$PACKAGESFEEDURL" == "$FEEDURL" ]]
+          then
+            echo "::error::AZURE_ARTIFACTS_FEED_URL must be an Azure Artifacts NuGet v3 index URL, got '$FEEDURL'"
+            exit 1
+          fi
+
           {
             echo "APITAGS=$APITAGS"
             echo "DBTAGS=$DBTAGS"
             echo "DBTAGS6x=$DBTAGS6x"
             echo "VERSION=$SEMVERSION"
+            echo "PACKAGESFEEDURL=$PACKAGESFEEDURL"
           } >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
@@ -376,6 +389,8 @@ jobs:
           build-args: |
             VERSION=${{ steps.prepare-tags.outputs.VERSION }}
             ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+            PACKAGES_FEED_URL=${{ steps.prepare-tags.outputs.PACKAGESFEEDURL }}
+          secrets: feed_token=${{ secrets.AZURE_ARTIFACTS_PERSONAL_ACCESS_TOKEN }}
           file: api.pgsql.Dockerfile
           tags: ${{ steps.prepare-tags.outputs.APITAGS }}
           labels: ${{ steps.metaapi.outputs.labels }}
@@ -396,7 +411,10 @@ jobs:
           cache-from: type=registry,ref=${{ env.DATABASE_IMAGE_NAME }}:pre
           cache-to: type=inline
           platforms: linux/amd64,linux/arm64
-          build-args: ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+          build-args: |
+            ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+            PACKAGES_FEED_URL=${{ steps.prepare-tags.outputs.PACKAGESFEEDURL }}
+          secrets: feed_token=${{ secrets.AZURE_ARTIFACTS_PERSONAL_ACCESS_TOKEN }}
           file: Dockerfile
           tags: ${{ steps.prepare-tags.outputs.DBTAGS }}
           labels: ${{ steps.metadatabase.outputs.labels }}
@@ -409,7 +427,10 @@ jobs:
           context: "{{defaultContext}}:Docker/Settings/V1/DB-Admin/pgsql"
           cache-from: type=registry,ref=${{ env.DATABASE_IMAGE_NAME }}:pre-for-6.2
           cache-to: type=inline
-          build-args: ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+          build-args: |
+            ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+            PACKAGES_FEED_URL=${{ steps.prepare-tags.outputs.PACKAGESFEEDURL }}
+          secrets: feed_token=${{ secrets.AZURE_ARTIFACTS_PERSONAL_ACCESS_TOKEN }}
           file: Dockerfile
           tags: ${{ steps.prepare-tags.outputs.DBTAGS6x }}
           labels: ${{ steps.metadatabase.outputs.labels }}

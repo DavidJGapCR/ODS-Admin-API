@@ -19,6 +19,8 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 ARG ADMIN_API_VERSION
 ENV ADMIN_API_VERSION="${ADMIN_API_VERSION:-2.2.0}"
 ENV ASPNETCORE_HTTP_PORTS=80
+# Azure Artifacts packaging API base for the feed hosting EdFi.Suite3.ODS.AdminApi
+ARG PACKAGES_FEED_URL=https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi
 
 ARG ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
@@ -28,8 +30,12 @@ WORKDIR /app
 COPY --chmod=500 Settings/pgsql/run.sh /app/run.sh
 COPY Settings/pgsql/log4net.config /app/log4net.txt
 
-RUN umask 0077 && \
-    wget -nv -O /app/AdminApi.zip "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${ADMIN_API_VERSION}/content" && \
+# The optional feed_token build secret authenticates against private feeds
+RUN --mount=type=secret,id=feed_token \
+    umask 0077 && \
+    PACKAGE_URL="${PACKAGES_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${ADMIN_API_VERSION}/content" && \
+    if [ -s /run/secrets/feed_token ]; then PACKAGE_URL="$(echo "${PACKAGE_URL}" | sed "s#://#://pat:$(cat /run/secrets/feed_token)@#")"; fi && \
+    wget -nv -O /app/AdminApi.zip "${PACKAGE_URL}" && \
     unzip /app/AdminApi.zip AdminApi/* -d /app/ && \
     cp -r /app/AdminApi/. /app/ && \
     rm -f /app/AdminApi.zip && \
