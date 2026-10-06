@@ -40,7 +40,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Quartz;
 
 namespace EdFi.Ods.AdminApi.Infrastructure;
@@ -72,6 +72,8 @@ public static class WebApplicationBuilderExtensions
         webApplicationBuilder.Services.Configure<AuditLoggingSettings>(config.GetSection("AuditLogging"));
         webApplicationBuilder.Services.AddSingleton<AuditLogChannel>();
         webApplicationBuilder.Services.AddSingleton<IAuditEventRecorder, AuditEventRecorder>();
+        webApplicationBuilder.Services.AddSingleton<IDeletedEntitySnapshotRegistry, DeletedEntitySnapshotRegistry>();
+        webApplicationBuilder.Services.AddScoped<IDeletedEntityAuditCapture, DeletedEntityAuditCapture>();
         EnableMultiTenancySupport(webApplicationBuilder);
 
         var adminApiMode = config.GetValue<AdminApiMode>("AppSettings:AdminApiMode", AdminApiMode.V2);
@@ -176,20 +178,10 @@ public static class WebApplicationBuilderExtensions
                     Type = SecuritySchemeType.OAuth2
                 }
             );
-            opt.AddSecurityRequirement(
+            opt.AddSecurityRequirement(document =>
                 new OpenApiSecurityRequirement
                 {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "oauth"
-                            },
-                        },
-                        _value
-                    }
+                    { new OpenApiSecuritySchemeReference("oauth", document), [.. _value] }
                 }
             );
 

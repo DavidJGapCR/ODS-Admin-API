@@ -1,0 +1,26 @@
+# This file is intended for use with Admin API 2 running in multi-tenant mode,
+# along with ODS/API 7.x in multi-tenant mode. It assumes there are two
+# different tenants named "tenant1" and "tenant2". Each has only one ODS
+# instance.
+
+@adminapi_url=https://localhost/adminapi
+@keyCloak_url=https://localhost/auth/realms/edfi-admin-console/protocol/openid-connect/token
+
+@keyCloak_client=adminconsole-worker-client
+@keyCloak_secret=7tpYh5eZtL0ct99cmfCXUY3q5o2KxUTU
+
+### Get a token from keyCloak for the Admin API client
+# @name tokenRequestKeyCloak
+POST {{keyCloak_url}}
+Content-Type: application/x-www-form-urlencoded
+Authorization: basic {{keyCloak_client}}:{{keyCloak_secret}}
+
+grant_type=client_credentials&scope=edfi_admin_api/full_access
+
+###
+@tokenKeyCloak = {{tokenRequestKeyCloak.response.body.access_token}}
+
+### Get tenants V2
+GET {{adminapi_url}}/v2/tenants
+Content-Type: application/json
+Authorization: bearer {{tokenKeyCloak}}

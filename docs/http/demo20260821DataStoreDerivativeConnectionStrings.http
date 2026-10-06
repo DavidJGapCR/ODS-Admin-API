@@ -1,0 +1,69 @@
+@adminapi_url=https://localhost/adminapi
+@adminapi_client=adminapi_client2
+@adminapi_secret=adminapi_SECRET_2025_rftyguhijkotgyhuijok
+
+### Register a new client
+POST {{adminapi_url}}/connect/register
+Content-Type: application/x-www-form-urlencoded
+
+ClientId={{adminapi_client}}&ClientSecret={{adminapi_secret}}&DisplayName=Admin+API+{{adminapi_client}}
+
+### Get a token
+# @name tokenRequest
+POST {{adminapi_url}}/connect/token
+Content-Type: application/x-www-form-urlencoded
+Authorization: basic {{adminapi_client}}:{{adminapi_secret}}
+
+grant_type=client_credentials&scope=edfi_admin_api/full_access
+
+###
+@token={{tokenRequest.response.body.access_token}}
+
+
+### Create a DataStore (parent for the derivative below)
+# @name createDataStore
+POST {{adminapi_url}}/v3/dataStores
+Content-Type: application/json
+Authorization: bearer {{token}}
+
+{
+  "name": "ADMINAPI-1482 Test DataStore",
+  "dataStoreType": "Ods",
+  "connectionString": "Host=localhost;Port=5432;Database=EdFi_Ods_Test;Username=postgres;Password=yourpassword"
+}
+
+### Get the created DataStore directly via the Location header from the response above
+GET {{createDataStore.response.headers.location}}
+Content-Type: application/json
+Authorization: bearer {{token}}
+
+###
+@dataStoreId=2
+
+
+### Create a DataStoreDerivative under that DataStore
+# @name createDerivative
+POST {{adminapi_url}}/v3/dataStoreDerivatives
+Content-Type: application/json
+Authorization: bearer {{token}}
+
+{
+  "dataStoreId": {{dataStoreId}},
+  "derivativeType": "ReadReplica",
+  "connectionString": "Host=localhost;Port=5432;Database=EdFi_Ods_Test_ReadReplica;Username=postgres;Password=yourpassword"
+}
+
+### Get all derivatives — none of the list entries should contain "connectionString"
+GET {{adminapi_url}}/v3/dataStoreDerivatives
+Content-Type: application/json
+Authorization: bearer {{token}}
+
+### Get the derivative directly via the Location header — response must NOT contain "connectionString"
+GET {{createDerivative.response.headers.location}}
+Content-Type: application/json
+Authorization: bearer {{token}}
+
+### Get the DataStore detail again — the embedded dataStoreDerivatives entries must NOT contain "connectionString"
+GET {{adminapi_url}}/v3/dataStores/{{dataStoreId}}
+Content-Type: application/json
+Authorization: bearer {{token}}
