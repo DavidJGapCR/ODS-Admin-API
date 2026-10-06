@@ -19,12 +19,12 @@ COPY --from=legacy_assets /docker-entrypoint-initdb.d/1-init-database.sh /tmp/1-
 COPY --from=legacy_assets /tmp/EdFi_Admin.sql /tmp/EdFi_Admin.sql
 COPY --from=legacy_assets /tmp/EdFi_Security.sql /tmp/EdFi_Security.sql
 
-# The optional feed_token build secret authenticates against private feeds
+# The optional feed_token build secret authenticates against private feeds. curl is used
+# because it drops the credentials when the feed redirects to blob storage, which rejects them.
 RUN --mount=type=secret,id=feed_token \
-    apk add --no-cache dos2unix=7.5.5-r0 unzip=6.0-r16 wget=1.25.0-r3 && \
-    PACKAGE_URL="${PACKAGES_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${VERSION}/content" && \
-    if [ -s /run/secrets/feed_token ]; then PACKAGE_URL="$(echo "${PACKAGE_URL}" | sed "s#://#://pat:$(cat /run/secrets/feed_token)@#")"; fi && \
-    wget -nv -O /tmp/EdFi_AdminApi_Scripts.zip "${PACKAGE_URL}" && \
+    apk add --no-cache dos2unix=7.5.5-r0 unzip=6.0-r16 curl=8.22.0-r0 && \
+    if [ -s /run/secrets/feed_token ]; then set -- --user "pat:$(cat /run/secrets/feed_token)"; fi && \
+    curl -fsSL "$@" -o /tmp/EdFi_AdminApi_Scripts.zip "${PACKAGES_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${VERSION}/content" && \
     # Admin
     mkdir -p /tmp/AdminApiScripts/Admin/ && \
     unzip /tmp/EdFi_AdminApi_Scripts.zip AdminApi/Artifacts/PgSql/Structure/Admin/* -d /tmp/AdminApiScripts/Admin/ && \
