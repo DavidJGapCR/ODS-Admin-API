@@ -30,12 +30,13 @@ WORKDIR /app
 COPY --chmod=500 Settings/pgsql/run.sh /app/run.sh
 COPY Settings/pgsql/log4net.config /app/log4net.txt
 
-# The optional feed_token build secret authenticates against private feeds
+# The optional feed_token build secret authenticates against private feeds. curl is used
+# because it drops the credentials when the feed redirects to blob storage, which rejects them.
 RUN --mount=type=secret,id=feed_token \
     umask 0077 && \
-    PACKAGE_URL="${PACKAGES_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${ADMIN_API_VERSION}/content" && \
-    if [ -s /run/secrets/feed_token ]; then PACKAGE_URL="$(echo "${PACKAGE_URL}" | sed "s#://#://pat:$(cat /run/secrets/feed_token)@#")"; fi && \
-    wget -nv -O /app/AdminApi.zip "${PACKAGE_URL}" && \
+    apk add --no-cache curl=~8 && \
+    if [ -s /run/secrets/feed_token ]; then set -- --user "pat:$(cat /run/secrets/feed_token)"; fi && \
+    curl -fsSL "$@" -o /app/AdminApi.zip "${PACKAGES_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${ADMIN_API_VERSION}/content" && \
     unzip /app/AdminApi.zip AdminApi/* -d /app/ && \
     cp -r /app/AdminApi/. /app/ && \
     rm -f /app/AdminApi.zip && \
@@ -46,7 +47,7 @@ RUN --mount=type=secret,id=feed_token \
     dos2unix /app/log4net.config && \
     chmod 700 /app/*.sh -- ** && \
     rm -f /app/*.exe && \
-    apk del unzip dos2unix && \
+    apk del unzip dos2unix curl && \
     chown -R edfi /app
 
 EXPOSE ${ASPNETCORE_HTTP_PORTS}
