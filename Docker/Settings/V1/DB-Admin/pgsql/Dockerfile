@@ -25,11 +25,13 @@ USER ${POSTGRES_USER}
 FROM base AS setup
 
 USER root
-# The optional feed_token build secret authenticates against private feeds
+# The optional feed_token build secret authenticates against private feeds. curl is used
+# because it drops the credentials when the feed redirects to blob storage, which rejects them.
 RUN --mount=type=secret,id=feed_token \
-    PACKAGE_URL="${PACKAGES_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${VERSION}/content" && \
-    if [ -s /run/secrets/feed_token ]; then PACKAGE_URL="$(echo "${PACKAGE_URL}" | sed "s#://#://pat:$(cat /run/secrets/feed_token)@#")"; fi && \
-    wget -nv -O /tmp/EdFi_AdminApi_Scripts.zip "${PACKAGE_URL}" && \
+    apk add --no-cache curl=~8 && \
+    if [ -s /run/secrets/feed_token ]; then set -- --user "pat:$(cat /run/secrets/feed_token)"; fi && \
+    curl -fsSL "$@" -o /tmp/EdFi_AdminApi_Scripts.zip "${PACKAGES_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${VERSION}/content" && \
+    apk del curl && \
     unzip /tmp/EdFi_AdminApi_Scripts.zip AdminApi/Artifacts/PgSql/Structure/Admin/* -d /tmp/AdminApiScripts/ && \
     cp -r /tmp/AdminApiScripts/AdminApi/Artifacts/PgSql/Structure/Admin/. /tmp/AdminApiScripts/PgSql/ && \
     rm -f /tmp/EdFi_AdminApi_Scripts.zip && \
