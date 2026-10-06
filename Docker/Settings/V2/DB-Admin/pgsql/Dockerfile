@@ -10,6 +10,8 @@ FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cab
 
 ARG ADMIN_API_VERSION
 ENV VERSION="${ADMIN_API_VERSION:-2.2.0}"
+# Azure Artifacts packaging API base for the feed hosting EdFi.Suite3.ODS.AdminApi
+ARG PACKAGES_FEED_URL=https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi
 
 COPY --from=shared Settings/shared/DB-Admin/pgsql/run-adminapi-migrations.sh /tmp/3-run-adminapi-migrations.sh
 COPY --from=shared Settings/shared/DB-Admin/pgsql/entrypoint.sh /tmp/entrypoint.sh
@@ -17,8 +19,12 @@ COPY --from=legacy_assets /docker-entrypoint-initdb.d/1-init-database.sh /tmp/1-
 COPY --from=legacy_assets /tmp/EdFi_Admin.sql /tmp/EdFi_Admin.sql
 COPY --from=legacy_assets /tmp/EdFi_Security.sql /tmp/EdFi_Security.sql
 
-RUN apk add --no-cache dos2unix=7.5.5-r0 unzip=6.0-r16 wget=1.25.0-r3 && \
-    wget -nv -O /tmp/EdFi_AdminApi_Scripts.zip "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${VERSION}/content" && \
+# The optional feed_token build secret authenticates against private feeds
+RUN --mount=type=secret,id=feed_token \
+    apk add --no-cache dos2unix=7.5.5-r0 unzip=6.0-r16 wget=1.25.0-r3 && \
+    PACKAGE_URL="${PACKAGES_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${VERSION}/content" && \
+    if [ -s /run/secrets/feed_token ]; then PACKAGE_URL="$(echo "${PACKAGE_URL}" | sed "s#://#://pat:$(cat /run/secrets/feed_token)@#")"; fi && \
+    wget -nv -O /tmp/EdFi_AdminApi_Scripts.zip "${PACKAGE_URL}" && \
     # Admin
     mkdir -p /tmp/AdminApiScripts/Admin/ && \
     unzip /tmp/EdFi_AdminApi_Scripts.zip AdminApi/Artifacts/PgSql/Structure/Admin/* -d /tmp/AdminApiScripts/Admin/ && \
