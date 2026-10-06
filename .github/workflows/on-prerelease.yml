@@ -292,7 +292,8 @@ jobs:
         run: |
           $artifact = (Get-ChildItem -Path $_ -Name -Include *.nupkg)
           $arguments = @{
-            NuGetApiKey = "${{ env.ARTIFACTS_API_KEY }}"
+            NuGetApiKey   = "${{ env.ARTIFACTS_API_KEY }}"
+            EdFiNuGetFeed = "${{ env.ARTIFACTS_FEED_URL }}"
           }
 
           $artifact | ForEach-Object {
