@@ -4,6 +4,6 @@ $apiPrefix = "v"
 # version
 $version = $(minver -t $apiPrefix)
 # Fallback to MinVer
-$apiVersion = "$version"          
+$apiVersion = $version
 
 return $apiVersion
