@@ -23,7 +23,8 @@ USER ${POSTGRES_USER}
 FROM base AS setup
 
 USER root
-RUN wget -nv -O /tmp/EdFi_AdminApi_Scripts.zip "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${VERSION}/content" && \
+ARG ADMIN_API_FEED_URL=https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi
+RUN wget -nv -O /tmp/EdFi_AdminApi_Scripts.zip "${ADMIN_API_FEED_URL}/nuget/packages/EdFi.Suite3.ODS.AdminApi/versions/${VERSION}/content" && \
     unzip /tmp/EdFi_AdminApi_Scripts.zip AdminApi/Artifacts/PgSql/Structure/Admin/* -d /tmp/AdminApiScripts/ && \
     cp -r /tmp/AdminApiScripts/AdminApi/Artifacts/PgSql/Structure/Admin/. /tmp/AdminApiScripts/PgSql/ && \
     rm -f /tmp/EdFi_AdminApi_Scripts.zip && \
