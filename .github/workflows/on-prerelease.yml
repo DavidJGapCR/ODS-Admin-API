@@ -345,7 +345,7 @@ jobs:
             DBTAGS6x="${{ env.DATABASE_IMAGE_NAME }}:${PACKAGEVERSION}-6.2,${{ env.DATABASE_IMAGE_NAME }}:${MINOR}-6.2"
           fi
 
-          SEMVERSION=${PACKAGEVERSION#v}  # strip off the leading 'v', if present
+          SEMVERSION=${PACKAGEVERSION:1}  # strip off the leading 'v'
           {
             echo "APITAGS=$APITAGS"
             echo "DBTAGS=$DBTAGS"
