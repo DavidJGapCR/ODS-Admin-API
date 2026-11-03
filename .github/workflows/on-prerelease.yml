@@ -295,6 +295,10 @@ jobs:
             NuGetApiKey = "${{ env.ARTIFACTS_API_KEY }}"
           }
 
+          if ("${{ env.ARTIFACTS_FEED_URL }}") {
+              $arguments.EdFiNuGetFeed = "${{ env.ARTIFACTS_FEED_URL }}"
+          }
+
           $artifact | ForEach-Object {
               $arguments.PackageFile = $_
               ./build.ps1 Push @arguments
