@@ -12,6 +12,8 @@ on:
 env:
   ARTIFACTS_API_KEY: ${{ secrets.AZURE_ARTIFACTS_PERSONAL_ACCESS_TOKEN }}
   ARTIFACTS_FEED_URL: ${{ vars.AZURE_ARTIFACTS_FEED_URL }}
+  # Feed the Docker images download the Admin API package from (must allow anonymous reads)
+  ADMIN_API_FEED_URL: ${{ vars.AZURE_ARTIFACTS_DOWNLOAD_URL || 'https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi' }}
   VSS_NUGET_EXTERNAL_FEED_ENDPOINTS: '{"endpointCredentials": [{"endpoint": "${{ vars.AZURE_ARTIFACTS_FEED_URL }}","password": "${{ secrets.AZURE_ARTIFACTS_PERSONAL_ACCESS_TOKEN }}"}]}'
   MANIFEST_FILE: "_manifest/spdx_2.2/manifest.spdx.json"
   PACKAGE_NAME: "AdminApi"
@@ -379,6 +381,7 @@ jobs:
           build-args: |
             VERSION=${{ steps.prepare-tags.outputs.VERSION }}
             ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+            ADMIN_API_FEED_URL=${{ env.ADMIN_API_FEED_URL }}
           file: api.pgsql.Dockerfile
           tags: ${{ steps.prepare-tags.outputs.APITAGS }}
           labels: ${{ steps.metaapi.outputs.labels }}
@@ -399,7 +402,9 @@ jobs:
           cache-from: type=registry,ref=${{ env.DATABASE_IMAGE_NAME }}:pre
           cache-to: type=inline
           platforms: linux/amd64,linux/arm64
-          build-args: ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+          build-args: |
+            ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+            ADMIN_API_FEED_URL=${{ env.ADMIN_API_FEED_URL }}
           file: Dockerfile
           tags: ${{ steps.prepare-tags.outputs.DBTAGS }}
           labels: ${{ steps.metadatabase.outputs.labels }}
@@ -412,7 +417,9 @@ jobs:
           context: "{{defaultContext}}:Docker/Settings/V1/DB-Admin/pgsql"
           cache-from: type=registry,ref=${{ env.DATABASE_IMAGE_NAME }}:pre-for-6.2
           cache-to: type=inline
-          build-args: ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+          build-args: |
+            ADMIN_API_VERSION=${{ steps.prepare-tags.outputs.VERSION }}
+            ADMIN_API_FEED_URL=${{ env.ADMIN_API_FEED_URL }}
           file: Dockerfile
           tags: ${{ steps.prepare-tags.outputs.DBTAGS6x }}
           labels: ${{ steps.metadatabase.outputs.labels }}
